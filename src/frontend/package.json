@@ -1,0 +1,23 @@
+{
+  "name": "tg-express-admin",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "ant-design-vue": "^4.2.6",
+    "axios": "^1.9.0",
+    "vue": "^3.5.30",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.4",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.5",
+    "vue-tsc": "^2.2.12"
+  }
+}

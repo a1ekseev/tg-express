@@ -1,0 +1,154 @@
+[project]
+name = "tg-express"
+version = "0.0.1"
+description = "Message forwarding between telegram and express"
+authors = [{ name = "a1eskeev", email = "i@a1ekseev.dev" }]
+requires-python = ">=3.14"
+dependencies = [
+    "pydantic==2.12.5",
+    "pydantic-settings==2.13.1",
+    "python-dotenv==1.2.2",
+    "fastapi==0.135.1",
+    "httpx==0.28.1",
+    "aiogram==3.26.0",
+    "pybotx==0.76.0",
+    "SQLAlchemy==2.0.48",
+    "psycopg[binary,pool]==3.3.3",
+    "boto3==1.42.73",
+    "PyJWT==2.12.1",
+    "alembic>=1.16.0",
+    "uvicorn>=0.42.0",
+]
+
+
+[dependency-groups]
+lint = [
+    "pre-commit==4.5.1",
+    "ruff==0.15.5",
+    "ty>=0.0.16",
+]
+tests = [
+    "coverage>=7.13.4",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "pytest-env>=1.5.0",
+    "pytest-xdist>=3.8.0",
+]
+
+
+[tool.ruff]
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+]
+extend-include = ["*.ipynb"]
+line-length = 120
+indent-width = 4
+target-version = "py314"
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "ASYNC", "S", "B", "C4", "DJ", "ISC", "ICN", "INP", "T20", "PT", "RSE", "SIM", "TID", "PD",
+    "PL", "TRY", "NPY", "RUF", "PIE", "PTH", "I", "UP", "DTZ", "ERA", "ARG", "EM", "FURB", "A", "SLF", "ANN", "PERF", "FLY", "LOG",
+    "RET501", "RET505", "RET506", "RET507", "RET508",
+    "S307", "G010", "PGH005",
+    "TCH",
+]
+ignore = [
+    "DJ001",
+    "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR2004",
+    "TRY002", "TRY003", "TRY300", "TRY401", "B904",
+    "RUF001", "RUF002", "RUF003", "RUF100",
+    "S104", "S105", "S603", "EM101", "EM102",
+]
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    "migrations",
+    "conftest.py",
+    "develop",
+]
+
+[tool.ruff.lint.flake8-type-checking]
+strict = true
+runtime-evaluated-base-classes = ["pydantic.BaseModel"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101"]
+
+
+[tool.ruff.format]
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = false
+docstring-code-line-length = "dynamic"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = [
+    "tests",
+]
+addopts = "-s -v --durations=0 --junitxml=test_reports.xml -m 'not e2e_live'"
+cache_dir = ".cache/pytest_cache"
+env = [
+    "SECRET_KEY=test-secret",
+]
+
+[tool.coverage.run]
+branch = true
+command_line = "-m pytest"
+
+[tool.coverage.report]
+show_missing = true
+omit = [
+    "tests/*",
+    "*/test_*.py",
+    "**/__init__.py",
+]
+
+[tool.coverage.xml]
+output = "coverage.xml"
