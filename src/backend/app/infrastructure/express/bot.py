@@ -51,13 +51,17 @@ async def send_to_express(
     wait_callback: bool = False,
 ) -> UUID:
     """Send a message to Express and return the sync_id."""
-    kwargs: dict[str, object] = {}
     if file is not None:
-        kwargs["file"] = file
+        return await bot.send_message(
+            bot_id=bot_id,
+            chat_id=chat_id,
+            body=body,
+            file=file,
+            wait_callback=wait_callback,
+        )
     return await bot.send_message(
         bot_id=bot_id,
         chat_id=chat_id,
         body=body,
         wait_callback=wait_callback,
-        **kwargs,
     )
