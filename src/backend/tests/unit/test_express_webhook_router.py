@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -24,51 +25,53 @@ def _set_mock_bot() -> MagicMock:
     return bot
 
 
-class TestExpressWebhook:
+class TestBotCommand:
     @pytest.mark.asyncio
     async def test_returns_503_when_bot_not_initialized(self) -> None:
         async with AsyncClient(transport=ASGITransport(app=_app), base_url="http://test") as client:
-            resp = await client.post("/express/webhook", json={"command": "test"})
-        assert resp.status_code == 503
+            resp = await client.post("/command", json={"command": "test"})
+        assert resp.status_code == HTTPStatus.SERVICE_UNAVAILABLE
 
     @pytest.mark.asyncio
-    async def test_calls_async_execute_raw_bot_command(self) -> None:
+    async def test_returns_202_accepted(self) -> None:
         bot = _set_mock_bot()
         async with AsyncClient(transport=ASGITransport(app=_app), base_url="http://test") as client:
-            resp = await client.post("/express/webhook", json={"command": "test"})
-        assert resp.status_code == 200
+            resp = await client.post("/command", json={"command": "test"})
+        assert resp.status_code == HTTPStatus.ACCEPTED
+        assert resp.json() == {"result": "accepted"}
         bot.async_execute_raw_bot_command.assert_called_once()
 
 
-class TestExpressStatus:
+class TestBotStatus:
     @pytest.mark.asyncio
     async def test_returns_503_when_bot_not_initialized(self) -> None:
         async with AsyncClient(transport=ASGITransport(app=_app), base_url="http://test") as client:
-            resp = await client.get("/express/status")
-        assert resp.status_code == 503
+            resp = await client.get("/status")
+        assert resp.status_code == HTTPStatus.SERVICE_UNAVAILABLE
 
     @pytest.mark.asyncio
     async def test_calls_raw_get_status(self) -> None:
         bot = _set_mock_bot()
         async with AsyncClient(transport=ASGITransport(app=_app), base_url="http://test") as client:
-            resp = await client.get("/express/status?user_huid=abc")
-        assert resp.status_code == 200
+            resp = await client.get("/status?user_huid=abc")
+        assert resp.status_code == HTTPStatus.OK
         bot.raw_get_status.assert_called_once()
         call_kwargs = bot.raw_get_status.call_args
         assert "user_huid" in call_kwargs.kwargs["query_params"]
 
 
-class TestExpressCallback:
+class TestBotNotificationCallback:
     @pytest.mark.asyncio
     async def test_returns_503_when_bot_not_initialized(self) -> None:
         async with AsyncClient(transport=ASGITransport(app=_app), base_url="http://test") as client:
-            resp = await client.post("/express/notification/callback", json={"sync_id": "test"})
-        assert resp.status_code == 503
+            resp = await client.post("/notification/callback", json={"sync_id": "test"})
+        assert resp.status_code == HTTPStatus.SERVICE_UNAVAILABLE
 
     @pytest.mark.asyncio
-    async def test_calls_set_raw_botx_method_result(self) -> None:
+    async def test_returns_202_accepted(self) -> None:
         bot = _set_mock_bot()
         async with AsyncClient(transport=ASGITransport(app=_app), base_url="http://test") as client:
-            resp = await client.post("/express/notification/callback", json={"sync_id": "test"})
-        assert resp.status_code == 200
+            resp = await client.post("/notification/callback", json={"sync_id": "test"})
+        assert resp.status_code == HTTPStatus.ACCEPTED
+        assert resp.json() == {"result": "accepted"}
         bot.set_raw_botx_method_result.assert_called_once()
