@@ -7,8 +7,7 @@ if TYPE_CHECKING:
     from fastapi import FastAPI
 
 _WORKER_MODULES: dict[str, str] = {
-    "to_express": "app.workers.to_express_worker",
-    "to_telegram": "app.workers.to_telegram_worker",
+    "bridge": "app.workers.bridge_worker",
     "admin_api": "app.workers.admin_api",
 }
 

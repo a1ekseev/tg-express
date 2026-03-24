@@ -6,9 +6,6 @@ import { approveChannelPair, listChannelPairs, type ChannelPair } from '@/api/ad
 
 const pairs = ref<ChannelPair[]>([]);
 const loading = ref(false);
-const modalOpen = ref(false);
-const modalPairId = ref('');
-const modalName = ref('');
 
 const columns = [
   { title: 'Name', dataIndex: 'name', key: 'name' },
@@ -29,21 +26,20 @@ async function load() {
   }
 }
 
-function openApprove(pair: ChannelPair) {
-  modalPairId.value = pair.id;
-  modalName.value = pair.name || '';
-  modalOpen.value = true;
-}
-
-async function doApprove() {
-  try {
-    await approveChannelPair(modalPairId.value, modalName.value);
-    message.success('Approved');
-    modalOpen.value = false;
-    await load();
-  } catch {
-    message.error('Approve failed');
-  }
+function confirmApprove(pair: ChannelPair) {
+  Modal.confirm({
+    title: 'Approve channel pair?',
+    content: pair.name || `TG Chat ${pair.tg_chat_id}`,
+    async onOk() {
+      try {
+        await approveChannelPair(pair.id);
+        message.success('Approved');
+        await load();
+      } catch {
+        message.error('Approve failed');
+      }
+    },
+  });
 }
 
 onMounted(load);
@@ -62,18 +58,10 @@ onMounted(load);
         {{ record.express_chat_id || '—' }}
       </template>
       <template v-if="column.key === 'actions'">
-        <a-button v-if="!record.is_approved" type="primary" size="small" @click="openApprove(record)">
+        <a-button v-if="!record.is_approved" type="primary" size="small" @click="confirmApprove(record)">
           Approve
         </a-button>
       </template>
     </template>
   </a-table>
-
-  <a-modal v-model:open="modalOpen" title="Approve Channel Pair" @ok="doApprove">
-    <a-form layout="vertical">
-      <a-form-item label="Express Chat Name">
-        <a-input v-model:value="modalName" placeholder="Name for the Express chat" />
-      </a-form-item>
-    </a-form>
-  </a-modal>
 </template>

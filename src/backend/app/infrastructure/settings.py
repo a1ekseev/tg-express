@@ -24,17 +24,23 @@ class Settings(BaseSettings):
 
     file_download_base_url: str
 
-    express_system_channel_id: UUID | None
+    express_system_channel_id: UUID
     express_admin_huids: list[UUID]  # noqa: RUF012
 
     admin_username: str
     admin_password: str
     jwt_secret_key: str
 
-    s3_file_ttl_days: int | None
+    s3_file_ttl_days: int
 
     retry_max_attempts: int
     retry_base_delay: float
     retry_max_delay: float
 
     log_level: str
+
+    express_wait_callback: bool
+    auto_approve_channels: bool
+    express_group_prefix: str
+
+    sentry_dsn: str | None = None

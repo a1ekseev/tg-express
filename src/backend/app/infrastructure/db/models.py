@@ -3,8 +3,10 @@ from __future__ import annotations
 from datetime import datetime  # noqa: TC003 - required at runtime for SQLAlchemy Mapped types
 from uuid import UUID, uuid4  # noqa: TC003 - required at runtime for SQLAlchemy mapped_column defaults
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, Index, String, UniqueConstraint, func
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey, Index, String, UniqueConstraint, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column  # noqa: TC002 - Mapped required at runtime
+
+_TZ = DateTime(timezone=True)
 
 
 class Base(DeclarativeBase):
@@ -19,8 +21,8 @@ class ChannelPairModel(Base):
     express_chat_id: Mapped[UUID | None] = mapped_column(unique=True, default=None)
     is_approved: Mapped[bool] = mapped_column(Boolean, default=False)
     name: Mapped[str | None] = mapped_column(String(255), default=None)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(_TZ, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(_TZ, server_default=func.now(), onupdate=func.now())
 
 
 class EmployeeModel(Base):
@@ -32,8 +34,10 @@ class EmployeeModel(Base):
     express_huid: Mapped[UUID | None] = mapped_column(unique=True, default=None)
     full_name: Mapped[str | None] = mapped_column(String(255), default=None)
     position: Mapped[str | None] = mapped_column(String(255), default=None)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    tg_name: Mapped[str | None] = mapped_column(String(255), default=None)
+    express_name: Mapped[str | None] = mapped_column(String(255), default=None)
+    created_at: Mapped[datetime] = mapped_column(_TZ, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(_TZ, server_default=func.now(), onupdate=func.now())
 
 
 class ToExpressModel(Base):
@@ -55,7 +59,7 @@ class ToExpressModel(Base):
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    channel_pair_id: Mapped[UUID] = mapped_column()
+    channel_pair_id: Mapped[UUID] = mapped_column(ForeignKey("channel_pairs.id"))
     tg_message_id: Mapped[int] = mapped_column(BigInteger)
     tg_chat_id: Mapped[int] = mapped_column(BigInteger)
     tg_user_id: Mapped[int] = mapped_column(BigInteger)
@@ -64,8 +68,8 @@ class ToExpressModel(Base):
     reply_to_tg_message_id: Mapped[int | None] = mapped_column(BigInteger, default=None)
     event_type: Mapped[str] = mapped_column(String(31), default="new_message")
     status: Mapped[str] = mapped_column(String(15), default="pending")
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(_TZ, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(_TZ, server_default=func.now(), onupdate=func.now())
 
 
 class ToTelegramModel(Base):
@@ -82,7 +86,7 @@ class ToTelegramModel(Base):
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    channel_pair_id: Mapped[UUID] = mapped_column()
+    channel_pair_id: Mapped[UUID] = mapped_column(ForeignKey("channel_pairs.id"))
     express_sync_id: Mapped[UUID] = mapped_column()
     express_chat_id: Mapped[UUID] = mapped_column()
     express_user_huid: Mapped[UUID] = mapped_column()
@@ -91,8 +95,8 @@ class ToTelegramModel(Base):
     reply_to_express_sync_id: Mapped[UUID | None] = mapped_column(default=None)
     event_type: Mapped[str] = mapped_column(String(31), default="new_message")
     status: Mapped[str] = mapped_column(String(15), default="pending")
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(_TZ, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(_TZ, server_default=func.now(), onupdate=func.now())
 
 
 class MessageFileModel(Base):
@@ -114,4 +118,4 @@ class MessageFileModel(Base):
     file_content_type: Mapped[str | None] = mapped_column(String(127), default=None)
     file_size: Mapped[int | None] = mapped_column(BigInteger, default=None)
     s3_key: Mapped[str | None] = mapped_column(String(1024), default=None)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(_TZ, server_default=func.now())

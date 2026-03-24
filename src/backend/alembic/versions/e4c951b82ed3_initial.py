@@ -1,8 +1,8 @@
-"""initial tables
+"""initial
 
-Revision ID: ec276e6df19f
+Revision ID: e4c951b82ed3
 Revises: 
-Create Date: 2026-03-23 15:31:49.926436
+Create Date: 2026-03-24 14:02:45.944394
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'ec276e6df19f'
+revision: str = 'e4c951b82ed3'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -27,8 +27,8 @@ def upgrade() -> None:
     sa.Column('express_chat_id', sa.Uuid(), nullable=True),
     sa.Column('is_approved', sa.Boolean(), nullable=False),
     sa.Column('name', sa.String(length=255), nullable=True),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('express_chat_id'),
     sa.UniqueConstraint('tg_chat_id')
@@ -39,8 +39,10 @@ def upgrade() -> None:
     sa.Column('express_huid', sa.Uuid(), nullable=True),
     sa.Column('full_name', sa.String(length=255), nullable=True),
     sa.Column('position', sa.String(length=255), nullable=True),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+    sa.Column('tg_name', sa.String(length=255), nullable=True),
+    sa.Column('express_name', sa.String(length=255), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.CheckConstraint('tg_user_id IS NOT NULL OR express_huid IS NOT NULL', name='ck_employee_id'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('express_huid'),
@@ -55,7 +57,7 @@ def upgrade() -> None:
     sa.Column('file_content_type', sa.String(length=127), nullable=True),
     sa.Column('file_size', sa.BigInteger(), nullable=True),
     sa.Column('s3_key', sa.String(length=1024), nullable=True),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index('ix_message_files_record', 'message_files', ['message_record_id', 'direction'], unique=False)
@@ -71,8 +73,9 @@ def upgrade() -> None:
     sa.Column('reply_to_tg_message_id', sa.BigInteger(), nullable=True),
     sa.Column('event_type', sa.String(length=31), nullable=False),
     sa.Column('status', sa.String(length=15), nullable=False),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['channel_pair_id'], ['channel_pairs.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('tg_chat_id', 'tg_message_id', 'event_type', name='uq_to_express_idempotency')
     )
@@ -91,8 +94,9 @@ def upgrade() -> None:
     sa.Column('reply_to_express_sync_id', sa.Uuid(), nullable=True),
     sa.Column('event_type', sa.String(length=31), nullable=False),
     sa.Column('status', sa.String(length=15), nullable=False),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['channel_pair_id'], ['channel_pairs.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('express_sync_id', 'event_type', name='uq_to_telegram_idempotency')
     )

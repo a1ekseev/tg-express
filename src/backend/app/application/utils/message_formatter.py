@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
     from app.domain.models import Employee
+
+MAX_CHAT_NAME_LENGTH: Final[int] = 128
 
 
 def format_header_to_express(employee: Employee | None, tg_sender_name: str) -> str:
@@ -26,9 +28,15 @@ def format_header_to_telegram(employee: Employee | None) -> str | None:
     return None
 
 
-def format_attachments_block(file_urls: list[str]) -> str:
-    """Build attachments block for Express messages."""
+def build_express_chat_name(prefix: str, name: str) -> str:
+    """Build Express chat name: prefix + space + name, truncated to 128 chars."""
+    return (prefix + " " + name)[:MAX_CHAT_NAME_LENGTH]
+
+
+def format_attachments_block(files: list[tuple[str, str | None]]) -> str:
+    """Build attachments block for Express messages in Markdown format."""
     lines = ["", "Вложения:"]
-    for i, url in enumerate(file_urls, start=1):
-        lines.append(f"{i}. {url}")
+    for i, (url, filename) in enumerate(files, start=1):
+        label = filename or "файл"
+        lines.append(f"{i}. [{label}]({url})")
     return "\n".join(lines)

@@ -1,31 +1,36 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, Request  # noqa: TC002 - Request must be runtime for FastAPI DI
 from fastapi.responses import JSONResponse
-from pybotx import Bot, build_command_accepted_response  # noqa: TC002 - Bot used at runtime for global type
+from pybotx import Bot, build_command_accepted_response  # noqa: TC002
 
-if TYPE_CHECKING:
-    from fastapi import Request
+from app.infrastructure.http.deps import get_express_bot
 
 router = APIRouter()
 
-_express_bot: Bot | None = None
-
-
-def set_express_bot(bot: Bot) -> None:
-    global _express_bot  # noqa: PLW0603
-    _express_bot = bot
-
 
 @router.post("/express/webhook")
-async def express_webhook(request: Request) -> JSONResponse:
-    bot = _express_bot
-    if bot is None:
-        return JSONResponse(status_code=503, content={"detail": "Bot not initialized"})
-
+async def express_webhook(request: Request, bot: Bot = Depends(get_express_bot)) -> JSONResponse:  # noqa: B008
     raw_body = await request.json()
-    await bot.async_execute_raw_bot_command(raw_body)  # type: ignore[unused-awaitable]
+    request_headers = dict(request.headers)
+    await bot.async_execute_raw_bot_command(raw_body, request_headers=request_headers)  # type: ignore[unused-awaitable]
     response = build_command_accepted_response()
     return JSONResponse(content=response)
+
+
+@router.get("/express/status")
+async def express_status(request: Request, bot: Bot = Depends(get_express_bot)) -> JSONResponse:  # noqa: B008
+    request_headers = dict(request.headers)
+    result = bot.raw_get_status(
+        query_params=dict(request.query_params),
+        request_headers=request_headers,
+    )
+    return JSONResponse(content=result)
+
+
+@router.post("/express/notification/callback")
+async def express_callback(request: Request, bot: Bot = Depends(get_express_bot)) -> JSONResponse:  # noqa: B008
+    raw_body = await request.json()
+    request_headers = dict(request.headers)
+    await bot.set_raw_botx_method_result(raw_body, request_headers=request_headers)
+    return JSONResponse(content={"status": "ok"})

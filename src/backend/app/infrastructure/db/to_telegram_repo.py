@@ -36,20 +36,24 @@ class ToTelegramRepo:
         results: list[UUID | None] = []
         for rec in records:
             record_id = uuid4()
-            stmt = (
-                pg_insert(ToTelegramModel)
-                .values(
-                    id=record_id,
-                    channel_pair_id=rec.channel_pair_id,
-                    express_sync_id=rec.express_sync_id,
-                    express_chat_id=rec.express_chat_id,
-                    express_user_huid=rec.express_user_huid,
-                    reply_to_express_sync_id=rec.reply_to_express_sync_id,
-                    event_type=rec.event_type,
-                )
-                .on_conflict_do_nothing(constraint="uq_to_telegram_idempotency")
-                .returning(ToTelegramModel.id)
+            insert_stmt = pg_insert(ToTelegramModel).values(
+                id=record_id,
+                channel_pair_id=rec.channel_pair_id,
+                express_sync_id=rec.express_sync_id,
+                express_chat_id=rec.express_chat_id,
+                express_user_huid=rec.express_user_huid,
+                reply_to_express_sync_id=rec.reply_to_express_sync_id,
+                event_type=rec.event_type,
             )
+            if rec.event_type in ("edit_message", "delete_message"):
+                stmt = insert_stmt.on_conflict_do_update(
+                    constraint="uq_to_telegram_idempotency",
+                    set_={"status": "pending"},
+                ).returning(ToTelegramModel.id)
+            else:
+                stmt = insert_stmt.on_conflict_do_nothing(constraint="uq_to_telegram_idempotency").returning(
+                    ToTelegramModel.id
+                )
             row = (await session.execute(stmt)).scalar_one_or_none()
             results.append(row)
         return results

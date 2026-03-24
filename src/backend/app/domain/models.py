@@ -52,3 +52,5 @@ class Employee(BaseModel):
     express_huid: UUID | None
     full_name: str | None
     position: str | None
+    tg_name: str | None
+    express_name: str | None

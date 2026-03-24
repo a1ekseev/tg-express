@@ -53,5 +53,6 @@ class ExpressIncomingDTO(BaseModel):
     has_contact: bool
     contact_name: str | None
     link_url: str | None
+    sender_name: str | None = None
     file_data: bytes | None = None
     event_type: str = "new_message"

@@ -42,5 +42,26 @@ class TestDataclasses:
         assert cp.tg_chat_id == 123
 
     def test_employee_frozen(self) -> None:
-        emp = Employee(id=uuid4(), tg_user_id=456, express_huid=None, full_name="Test", position="Dev")
+        emp = Employee(
+            id=uuid4(),
+            tg_user_id=456,
+            express_huid=None,
+            full_name="Test",
+            position="Dev",
+            tg_name=None,
+            express_name=None,
+        )
         assert emp.position == "Dev"
+
+    def test_employee_with_names(self) -> None:
+        emp = Employee(
+            id=uuid4(),
+            tg_user_id=456,
+            express_huid=uuid4(),
+            full_name="Иван Иванов",
+            position="Архитектор",
+            tg_name="Ivan Ivanov",
+            express_name="Иван",
+        )
+        assert emp.tg_name == "Ivan Ivanov"
+        assert emp.express_name == "Иван"

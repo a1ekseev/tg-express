@@ -24,7 +24,7 @@ def set_webhook_service(service: ToTelegramService) -> None:
     _webhook_service = service
 
 
-def set_system_channel_id(channel_id: UUID | None) -> None:
+def set_system_channel_id(channel_id: UUID) -> None:
     global _system_channel_id  # noqa: PLW0603
     _system_channel_id = channel_id
 

@@ -97,3 +97,6 @@ test_reports.xml
 node_modules/
 dist/
 tsconfig.tsbuildinfo
+
+# --- Prod deployment ---
+prod/

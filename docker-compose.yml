@@ -38,16 +38,10 @@ services:
     command: ["python", "-m", "alembic", "upgrade", "head"]
     env_file: .env
 
-  to-express:
+  bridge:
     image: tg-express-backend
     network_mode: host
-    command: ["uvicorn", "app.workers:to_express", "--host", "0.0.0.0", "--port", "8081"]
-    env_file: .env
-
-  to-telegram:
-    image: tg-express-backend
-    network_mode: host
-    command: ["uvicorn", "app.workers:to_telegram", "--host", "0.0.0.0", "--port", "8082"]
+    command: ["uvicorn", "app.workers:bridge", "--host", "0.0.0.0", "--port", "8080"]
     env_file: .env
 
   admin-api:

@@ -47,21 +47,26 @@ class ToExpressRepo:
         results: list[UUID | None] = []
         for rec in records:
             record_id = uuid4()
-            stmt = (
-                pg_insert(ToExpressModel)
-                .values(
-                    id=record_id,
-                    channel_pair_id=rec.channel_pair_id,
-                    tg_message_id=rec.tg_message_id,
-                    tg_chat_id=rec.tg_chat_id,
-                    tg_user_id=rec.tg_user_id,
-                    tg_media_group_id=rec.tg_media_group_id,
-                    reply_to_tg_message_id=rec.reply_to_tg_message_id,
-                    event_type=rec.event_type,
-                )
-                .on_conflict_do_nothing(constraint="uq_to_express_idempotency")
-                .returning(ToExpressModel.id)
+            insert_stmt = pg_insert(ToExpressModel).values(
+                id=record_id,
+                channel_pair_id=rec.channel_pair_id,
+                tg_message_id=rec.tg_message_id,
+                tg_chat_id=rec.tg_chat_id,
+                tg_user_id=rec.tg_user_id,
+                tg_media_group_id=rec.tg_media_group_id,
+                reply_to_tg_message_id=rec.reply_to_tg_message_id,
+                event_type=rec.event_type,
             )
+            # Edit/delete events: reset status so they can be re-processed
+            if rec.event_type in ("edit_message", "delete_message"):
+                stmt = insert_stmt.on_conflict_do_update(
+                    constraint="uq_to_express_idempotency",
+                    set_={"status": "pending"},
+                ).returning(ToExpressModel.id)
+            else:
+                stmt = insert_stmt.on_conflict_do_nothing(constraint="uq_to_express_idempotency").returning(
+                    ToExpressModel.id
+                )
             row = (await session.execute(stmt)).scalar_one_or_none()
             results.append(row)
         return results

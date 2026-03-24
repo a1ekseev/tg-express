@@ -8,6 +8,9 @@ from app.application.dto import ExpressIncomingDTO
 if TYPE_CHECKING:
     from pybotx import EventDeleted, EventEdit, IncomingMessage
 
+# EventDeleted does not carry a user huid — use nil UUID as placeholder
+_NIL_UUID = UUID(int=0)
+
 
 def incoming_to_dto(message: IncomingMessage) -> ExpressIncomingDTO:
     file_type: str | None = None
@@ -43,6 +46,7 @@ def incoming_to_dto(message: IncomingMessage) -> ExpressIncomingDTO:
         has_contact=message.contact is not None,
         contact_name=contact_name,
         link_url=link_url,
+        sender_name=message.sender.username,
         file_data=file_data,
     )
 
@@ -71,7 +75,7 @@ def deleted_event_to_dtos(event: EventDeleted) -> list[ExpressIncomingDTO]:
         ExpressIncomingDTO(
             sync_id=sync_id,
             chat_id=event.group_chat_id,
-            user_huid=UUID(int=0),
+            user_huid=_NIL_UUID,
             body=None,
             source_sync_id=None,
             file_type=None,

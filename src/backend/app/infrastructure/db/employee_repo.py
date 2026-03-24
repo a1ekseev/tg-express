@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.domain.models import Employee
 from app.infrastructure.db.models import EmployeeModel
@@ -12,6 +14,15 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from sqlalchemy.ext.asyncio import AsyncSession
+
+
+class _Unset(Enum):
+    """Sentinel to distinguish 'not provided' from None."""
+
+    UNSET = "UNSET"
+
+
+UNSET: _Unset = _Unset.UNSET
 
 
 class EmployeeRepo:
@@ -32,26 +43,30 @@ class EmployeeRepo:
         return _to_domain(row)
 
     @staticmethod
-    async def find_or_create_by_tg_user_id(session: AsyncSession, tg_user_id: int) -> Employee:
-        stmt = select(EmployeeModel).where(EmployeeModel.tg_user_id == tg_user_id)
-        row = (await session.execute(stmt)).scalar_one_or_none()
-        if row is not None:
-            return _to_domain(row)
-        model = EmployeeModel(id=uuid4(), tg_user_id=tg_user_id)
-        session.add(model)
-        await session.flush()
-        return _to_domain(model)
+    async def find_or_create_by_tg_user_id(
+        session: AsyncSession, tg_user_id: int, *, name: str | None = None
+    ) -> Employee:
+        stmt = (
+            pg_insert(EmployeeModel)
+            .values(id=uuid4(), tg_user_id=tg_user_id, tg_name=name)
+            .on_conflict_do_update(index_elements=["tg_user_id"], set_={"tg_name": name})
+            .returning(EmployeeModel)
+        )
+        row = (await session.execute(stmt)).scalar_one()
+        return _to_domain(row)
 
     @staticmethod
-    async def find_or_create_by_express_huid(session: AsyncSession, express_huid: UUID) -> Employee:
-        stmt = select(EmployeeModel).where(EmployeeModel.express_huid == express_huid)
-        row = (await session.execute(stmt)).scalar_one_or_none()
-        if row is not None:
-            return _to_domain(row)
-        model = EmployeeModel(id=uuid4(), express_huid=express_huid)
-        session.add(model)
-        await session.flush()
-        return _to_domain(model)
+    async def find_or_create_by_express_huid(
+        session: AsyncSession, express_huid: UUID, *, name: str | None = None
+    ) -> Employee:
+        stmt = (
+            pg_insert(EmployeeModel)
+            .values(id=uuid4(), express_huid=express_huid, express_name=name)
+            .on_conflict_do_update(index_elements=["express_huid"], set_={"express_name": name})
+            .returning(EmployeeModel)
+        )
+        row = (await session.execute(stmt)).scalar_one()
+        return _to_domain(row)
 
     @staticmethod
     async def create(
@@ -78,14 +93,14 @@ class EmployeeRepo:
         session: AsyncSession,
         employee_id: UUID,
         *,
-        full_name: str | None = None,
-        position: str | None = None,
+        full_name: str | None | _Unset = UNSET,
+        position: str | None | _Unset = UNSET,
     ) -> None:
         stmt = select(EmployeeModel).where(EmployeeModel.id == employee_id)
         row = (await session.execute(stmt)).scalar_one()
-        if full_name is not None:
+        if not isinstance(full_name, _Unset):
             row.full_name = full_name
-        if position is not None:
+        if not isinstance(position, _Unset):
             row.position = position
         await session.flush()
 
@@ -110,4 +125,6 @@ def _to_domain(model: EmployeeModel) -> Employee:
         express_huid=model.express_huid,
         full_name=model.full_name,
         position=model.position,
+        tg_name=model.tg_name,
+        express_name=model.express_name,
     )

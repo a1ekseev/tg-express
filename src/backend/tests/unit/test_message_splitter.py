@@ -1,4 +1,9 @@
-from app.application.utils.message_splitter import MAX_MESSAGE_LENGTH, split_to_express, split_to_telegram
+from app.application.utils.message_splitter import (
+    CAPTION_LENGTH,
+    MAX_MESSAGE_LENGTH,
+    split_to_express,
+    split_to_telegram,
+)
 
 
 class TestSplitToExpress:
@@ -46,20 +51,39 @@ class TestSplitToExpress:
         assert len(parts) == 1
 
     def test_attachments_as_separate_part_when_last_chunk_full(self) -> None:
-        # Body fills last chunk completely, forcing attachments into a new part
-        body = "x" * (MAX_MESSAGE_LENGTH - len("[N]:") - 1)  # fills first chunk exactly
-        body += " " + "y" * (MAX_MESSAGE_LENGTH - 1)  # fills second chunk nearly full
+        body = "x" * (MAX_MESSAGE_LENGTH - len("[N]:") - 1)
+        body += " " + "y" * (MAX_MESSAGE_LENGTH - 1)
         attachments = "\n\nВложения:\n1. url"
         parts = split_to_express("[N]:", body, attachments)
         assert len(parts) >= 3
         assert "Вложения:" in parts[-1]
-        # Attachments are in a separate last part
         assert parts[-1].strip().startswith("Вложения:")
 
     def test_empty_body_string(self) -> None:
         parts = split_to_express("[Name]:", "", None)
         assert len(parts) == 1
         assert parts[0] == "[Name]:\n"
+
+    def test_header_not_isolated_no_newlines_in_body(self) -> None:
+        """When body has no newlines, header should NOT be isolated in its own part."""
+        header = "[Системный Аналитик, Иван Иванов]:"
+        body = "Анализ требований к модулю платежей. " * 120  # ~4440 chars, no \n
+        parts = split_to_express(header, body, None)
+        # First part should contain header + substantial body content
+        assert len(parts[0]) > len(header) + 100
+        assert parts[0].startswith(header)
+        for part in parts:
+            assert len(part) <= MAX_MESSAGE_LENGTH
+
+    def test_header_not_isolated_at_exact_boundary(self) -> None:
+        """Header+newline+body = just over 4096. Should not isolate header."""
+        header = "[N]:"
+        body = "word " * 820  # ~4100 chars with spaces, no newlines
+        parts = split_to_express(header, body, None)
+        # First part should not be just the header
+        assert len(parts[0]) > len(header) + 100
+        for part in parts:
+            assert len(part) <= MAX_MESSAGE_LENGTH
 
 
 class TestSplitToTelegram:
@@ -101,5 +125,121 @@ class TestSplitToTelegram:
         body = "x" * (MAX_MESSAGE_LENGTH + 100)
         parts = split_to_telegram(None, body)
         assert len(parts) == 2
+        for part in parts:
+            assert len(part) <= MAX_MESSAGE_LENGTH
+
+    # --- first_part_limit (caption support) ---
+
+    def test_first_part_limit_splits_at_caption_length(self) -> None:
+        """With first_part_limit=1024, first part must be ≤ 1024."""
+        body = "Описание файла с подробной информацией. " * 30  # ~1200 chars
+        parts = split_to_telegram("[Архитектор]:", body, first_part_limit=CAPTION_LENGTH)
+        assert len(parts) >= 2
+        assert len(parts[0]) <= CAPTION_LENGTH
+        for part in parts[1:]:
+            assert len(part) <= MAX_MESSAGE_LENGTH
+
+    def test_first_part_limit_no_split_when_fits(self) -> None:
+        """Short message fits within caption limit — no split needed."""
+        parts = split_to_telegram("[P]:", "short body", first_part_limit=CAPTION_LENGTH)
+        assert len(parts) == 1
+        assert len(parts[0]) <= CAPTION_LENGTH
+
+    def test_first_part_limit_none_uses_4096(self) -> None:
+        """Without first_part_limit, 2000-char message fits in single part."""
+        body = "word " * 400  # ~2000 chars
+        parts = split_to_telegram("[P]:", body, first_part_limit=None)
+        assert len(parts) == 1
+
+    def test_first_part_limit_rest_uses_4096(self) -> None:
+        """Subsequent parts after the first use the standard 4096 limit."""
+        body = "Текст " * 800  # ~4800 chars
+        parts = split_to_telegram("[P]:", body, first_part_limit=CAPTION_LENGTH)
+        assert len(parts[0]) <= CAPTION_LENGTH
+        # Second part can use full 4096
+        for part in parts[1:]:
+            assert len(part) <= MAX_MESSAGE_LENGTH
+
+    def test_header_not_isolated_with_first_part_limit(self) -> None:
+        """Even with caption limit, header should not be alone."""
+        header = "[Архитектор]:"  # 13 chars
+        body = "x " * 600  # ~1200 chars
+        parts = split_to_telegram(header, body, first_part_limit=CAPTION_LENGTH)
+        assert len(parts[0]) > len(header) + 10
+
+
+class TestSplitToExpressLargeMessages:
+    def test_api_changelog_with_header_and_attachments(self) -> None:
+        header = "[DevOps, Иван Петров]:"
+        body = "Обновил документацию по API v2.3.1.\n\nОсновные изменения:\n" + "".join(
+            f"{i}. Описание изменения номер {i} с деталями и пояснениями.\n" for i in range(1, 80)
+        )
+        attachments = "\n\nВложения:\n1. https://files.company.com/docs/api-v2.3.1-changelog.pdf"
+        parts = split_to_express(header, body, attachments)
+        assert parts[0].startswith(header)
+        assert "Вложения:" in parts[-1]
+        for part in parts:
+            assert len(part) <= MAX_MESSAGE_LENGTH
+
+    def test_single_paragraph_no_newlines(self) -> None:
+        """Long paragraph with no newlines should not isolate header."""
+        header = "[Системный Аналитик, Александр Иванов]:"
+        body = "Анализ бизнес-требований к интеграции с внешним провайдером платежей. " * 80
+        parts = split_to_express(header, body, None)
+        # Header must not be isolated
+        assert len(parts[0]) > len(header) + 100
+        for part in parts:
+            assert len(part) <= MAX_MESSAGE_LENGTH
+
+    def test_production_bug_report(self) -> None:
+        header = "[Backend, Мария Сидорова]:"
+        body = (
+            "Баг в продакшене.\n\n"
+            "Stack trace:\n" + "  File line " * 50 + "\n\n"
+            "Затронуты: ~2500 транзакций.\n"
+            "Потери: $15,000.\n"
+            "Hotfix: PR #891\n\n"
+            "Приоритет: P0"
+        )
+        attachments = "\n\nВложения:\n1. https://files.example.com/logs/crash-2026-03-23.txt"
+        parts = split_to_express(header, body, attachments)
+        assert parts[0].startswith(header)
+        assert "Вложения:" in parts[-1]
+        for part in parts:
+            assert len(part) <= MAX_MESSAGE_LENGTH
+
+
+class TestSplitToTelegramLargeMessages:
+    def test_long_body_with_file_caption_limit(self) -> None:
+        """Full pipeline: header + long body + file → first part ≤ 1024."""
+        header = "[Архитектор]:"
+        body = "Описание файла с техническими требованиями и спецификациями. " * 20
+        parts = split_to_telegram(header, body, first_part_limit=CAPTION_LENGTH)
+        assert len(parts) >= 2
+        assert len(parts[0]) <= CAPTION_LENGTH
+        assert header in parts[0] or parts[0].startswith("[")
+        for part in parts:
+            assert len(part) <= MAX_MESSAGE_LENGTH
+
+    def test_long_edit_body_fits_in_4096(self) -> None:
+        """Edit body > 4096 should be split, first part ≤ 4096."""
+        body = "Обновлённый текст требований. " * 200  # ~6000 chars
+        parts = split_to_telegram(None, body)
+        assert len(parts) >= 2
+        for part in parts:
+            assert len(part) <= MAX_MESSAGE_LENGTH
+
+    def test_sprint_report_express_to_telegram(self) -> None:
+        """Realistic sanitized Sprint report split for Telegram."""
+        header = "[Тимлид]:"
+        body = (
+            "Итоги спринта #47 (10.03 — 21.03.2026)\n\n"
+            "Метрики:\n"
+            + "".join(f"• Метрика {i}: значение {i * 10}\n" for i in range(1, 100))
+            + "\nБлокеры:\n"
+            + "".join(f"{i}. Блокер номер {i} с описанием.\n" for i in range(1, 20))
+        )
+        parts = split_to_telegram(header, body)
+        assert parts[0].startswith(header)
         for part in parts:
             assert len(part) <= MAX_MESSAGE_LENGTH

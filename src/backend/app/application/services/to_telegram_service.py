@@ -9,10 +9,10 @@ from aiogram.types import BufferedInputFile, ReplyParameters
 
 from app.application.utils.message_filter import should_forward_express_message
 from app.application.utils.message_formatter import format_header_to_telegram
-from app.application.utils.message_splitter import split_to_telegram
+from app.application.utils.message_splitter import CAPTION_LENGTH, split_to_telegram
 from app.application.utils.retry import with_retry
 from app.application.utils.sanitize import sanitize_to_telegram
-from app.domain.models import Employee, EventType, MessageDirection, MessageStatus
+from app.domain.models import EventType, MessageDirection, MessageStatus
 from app.infrastructure.db.to_express_repo import MessageFileInsert
 from app.infrastructure.db.to_telegram_repo import ToTelegramInsert
 
@@ -69,6 +69,9 @@ class ToTelegramService:
             for m in messages
             if should_forward_express_message(has_sticker=m.has_sticker, has_location=m.has_location)
         ]
+        skipped = len(messages) - len(eligible)
+        if skipped:
+            logger.debug("Skipped %d Express messages (sticker/location)", skipped)
         if not eligible:
             return
 
@@ -91,7 +94,10 @@ class ToTelegramService:
             if msg.file_data is not None and msg.file_name is not None:
                 s3_key = self._s3_storage.generate_s3_key(msg.file_name)
                 await self._s3_storage.upload(
-                    s3_key, msg.file_data, msg.file_content_type or "application/octet-stream"
+                    s3_key,
+                    msg.file_data,
+                    msg.file_content_type or "application/octet-stream",
+                    filename=msg.file_name,
                 )
                 s3_keys[msg.sync_id] = s3_key
 
@@ -156,12 +162,21 @@ class ToTelegramService:
                     await self._handle_edit_message(msg, record_id, sanitized_bodies.get(msg.sync_id))
                 elif event_type == EventType.DELETE_MESSAGE:
                     await self._handle_delete_message(msg, record_id)
+                else:
+                    logger.warning("Unknown event_type=%s for record_id=%s, skipping", event_type, record_id)
+                    continue
                 sent_count += 1
             except Exception:
                 logger.exception("Failed to send record_id=%s to TG", record_id)
 
         if sent_count:
-            logger.info("Sent %d messages to TG for channel_pair_id=%s", sent_count, channel_pair.id)
+            logger.info(
+                "Sent %d messages to TG tg_chat_id=%d (pair=%s, name=%s)",
+                sent_count,
+                channel_pair.tg_chat_id,
+                channel_pair.id,
+                channel_pair.name,
+            )
 
     async def _handle_new_message(
         self,
@@ -179,15 +194,19 @@ class ToTelegramService:
                 if result is not None:
                     reply_to_message_id = result[0]
 
-            # Employee for header (auto-create if first message)
-            employee = await self._employee_repo.find_or_create_by_express_huid(session, msg.user_huid)
+            # Employee for header (auto-create if first message, update express_name)
+            employee = await self._employee_repo.find_or_create_by_express_huid(
+                session, msg.user_huid, name=msg.sender_name
+            )
 
-        emp = employee if isinstance(employee, Employee) else None
-        header = format_header_to_telegram(emp)
-        parts = split_to_telegram(header, body)
+        header = format_header_to_telegram(employee)
 
         # Prepare file data (use in-memory bytes from DTO, avoid S3 re-download)
         file_data = msg.file_data if msg.sync_id in s3_keys else None
+
+        # When sending file, first part is caption (max 1024 chars)
+        first_limit = CAPTION_LENGTH if file_data is not None else None
+        parts = split_to_telegram(header, body, first_part_limit=first_limit)
         file_type = msg.file_type or "document"
         file_name = msg.file_name
 
@@ -227,6 +246,10 @@ class ToTelegramService:
         record_id: UUID,
         body: str | None,
     ) -> None:
+        if not body:
+            logger.warning("Skipping edit with empty body for sync_id=%s", msg.sync_id)
+            return
+
         async with self._session_factory() as session, session.begin():
             result = await self._mapping_queries.find_tg_message(session, msg.sync_id)
 
@@ -234,11 +257,16 @@ class ToTelegramService:
             return
 
         tg_message_id, tg_chat_id = result
+
+        # Truncate to first part if body exceeds Telegram limit
+        parts = split_to_telegram(None, body)
+        edit_body = parts[0] if parts else body
+
         await with_retry(
             self._tg_bot.edit_message_text,
             chat_id=tg_chat_id,
             message_id=tg_message_id,
-            text=body or "",
+            text=edit_body,
             max_attempts=self._retry_max_attempts,
             base_delay=self._retry_base_delay,
             max_delay=self._retry_max_delay,

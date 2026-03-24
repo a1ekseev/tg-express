@@ -13,7 +13,9 @@ const editPosition = ref('');
 
 const columns = [
   { title: 'TG User ID', dataIndex: 'tg_user_id', key: 'tg_user_id', width: 140 },
+  { title: 'TG Name', dataIndex: 'tg_name', key: 'tg_name' },
   { title: 'Express HUID', dataIndex: 'express_huid', key: 'express_huid' },
+  { title: 'Express Name', dataIndex: 'express_name', key: 'express_name' },
   { title: 'Full Name', dataIndex: 'full_name', key: 'full_name' },
   { title: 'Position', dataIndex: 'position', key: 'position' },
   { title: '', key: 'actions', width: 180 },
@@ -77,8 +79,14 @@ onMounted(load);
       <template v-if="column.key === 'tg_user_id'">
         {{ record.tg_user_id ?? '—' }}
       </template>
+      <template v-if="column.key === 'tg_name'">
+        {{ record.tg_name || '—' }}
+      </template>
       <template v-if="column.key === 'express_huid'">
         {{ record.express_huid || '—' }}
+      </template>
+      <template v-if="column.key === 'express_name'">
+        {{ record.express_name || '—' }}
       </template>
       <template v-if="column.key === 'full_name'">
         {{ record.full_name || '—' }}

@@ -26,14 +26,18 @@ class S3Storage:
             logger.info("Creating S3 bucket %s", self._bucket)
             await asyncio.to_thread(self._client.create_bucket, Bucket=self._bucket)
 
-    async def upload(self, key: str, data: bytes, content_type: str) -> None:
-        logger.info("S3 upload key=%s content_type=%s", key, content_type)
+    async def upload(self, key: str, data: bytes, content_type: str, *, filename: str | None = None) -> None:
+        logger.info("S3 upload key=%s content_type=%s filename=%s", key, content_type, filename)
+        metadata: dict[str, str] = {}
+        if filename:
+            metadata["filename"] = filename
         await asyncio.to_thread(
             self._client.put_object,
             Bucket=self._bucket,
             Key=key,
             Body=data,
             ContentType=content_type,
+            Metadata=metadata,
         )
 
     async def download(self, key: str) -> tuple[bytes, str]:
@@ -47,6 +51,11 @@ class S3Storage:
         content_type: str = response.get("ContentType", "application/octet-stream")
         return body, content_type
 
+    async def head_object(self, key: str) -> dict[str, str]:
+        """Check if object exists and return its user metadata. Raises ClientError if not found."""
+        response: dict[str, Any] = await asyncio.to_thread(self._client.head_object, Bucket=self._bucket, Key=key)
+        return response.get("Metadata", {})
+
     async def get_object_stream(self, key: str) -> AsyncIterator[bytes]:
         response: dict[str, Any] = await asyncio.to_thread(
             self._client.get_object,
@@ -54,12 +63,15 @@ class S3Storage:
             Key=key,
         )
         body = response["Body"]
-        chunk_size = 65536
-        while True:
-            chunk: bytes = await asyncio.to_thread(body.read, chunk_size)
-            if not chunk:
-                break
-            yield chunk
+        try:
+            chunk_size = 65536
+            while True:
+                chunk: bytes = await asyncio.to_thread(body.read, chunk_size)
+                if not chunk:
+                    break
+                yield chunk
+        finally:
+            body.close()
 
     def get_download_url(self, s3_key: str) -> str:
         return f"{self._base_url}/api/files/{s3_key}"
@@ -82,5 +94,5 @@ class S3Storage:
         )
 
     @staticmethod
-    def generate_s3_key(filename: str) -> str:
-        return f"{uuid4()}/{filename}"
+    def generate_s3_key(filename: str) -> str:  # noqa: ARG004
+        return str(uuid4())

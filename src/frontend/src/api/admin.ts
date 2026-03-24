@@ -59,11 +59,8 @@ export async function listChannelPairs(): Promise<ChannelPair[]> {
   return data;
 }
 
-export async function approveChannelPair(pairId: string, name?: string): Promise<void> {
-  await api.post(`/api/admin/channel-pairs/${pairId}/approve`, {
-    name: name || null,
-    member_huids: [],
-  });
+export async function approveChannelPair(pairId: string): Promise<void> {
+  await api.post(`/api/admin/channel-pairs/${pairId}/approve`);
 }
 
 // --- Employees ---
@@ -74,6 +71,8 @@ export interface Employee {
   express_huid: string | null;
   full_name: string | null;
   position: string | null;
+  tg_name: string | null;
+  express_name: string | null;
 }
 
 export async function listEmployees(): Promise<Employee[]> {
