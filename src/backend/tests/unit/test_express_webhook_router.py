@@ -13,13 +13,13 @@ _app.include_router(router)
 
 @pytest.fixture(autouse=True)
 def _reset_state() -> None:
-    _app.state.express_bot = None  # type: ignore[assignment]
+    _app.state.express_bot = None
 
 
 def _set_mock_bot() -> MagicMock:
     bot = MagicMock()
-    bot.async_execute_raw_bot_command = AsyncMock()
-    bot.raw_get_status = MagicMock(return_value={"status": "ok", "commands": []})
+    bot.async_execute_raw_bot_command = MagicMock()
+    bot.raw_get_status = AsyncMock(return_value={"status": "ok", "commands": []})
     bot.set_raw_botx_method_result = AsyncMock()
     _app.state.express_bot = bot
     return bot

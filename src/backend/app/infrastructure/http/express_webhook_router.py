@@ -15,14 +15,14 @@ router = APIRouter()
 async def bot_command(request: Request, bot: Bot = Depends(get_express_bot)) -> JSONResponse:  # noqa: B008
     raw_body = await request.json()
     request_headers = dict(request.headers)
-    await bot.async_execute_raw_bot_command(raw_body, request_headers=request_headers)  # type: ignore[unused-awaitable]
+    bot.async_execute_raw_bot_command(raw_body, request_headers=request_headers)
     return JSONResponse(build_command_accepted_response(), status_code=HTTPStatus.ACCEPTED)
 
 
 @router.get("/status")
 async def bot_status(request: Request, bot: Bot = Depends(get_express_bot)) -> JSONResponse:  # noqa: B008
     request_headers = dict(request.headers)
-    result = bot.raw_get_status(
+    result = await bot.raw_get_status(
         query_params=dict(request.query_params),
         request_headers=request_headers,
     )

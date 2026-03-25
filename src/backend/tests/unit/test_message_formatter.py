@@ -101,7 +101,7 @@ class TestFormatAttachmentsBlock:
         assert "1. [doc.pdf](https://host/api/files/abc)" in result
 
     def test_multiple_files_markdown(self) -> None:
-        files = [
+        files: list[tuple[str, str | None]] = [
             ("https://host/api/files/abc", "doc.pdf"),
             ("https://host/api/files/def", "img.png"),
         ]
@@ -114,7 +114,7 @@ class TestFormatAttachmentsBlock:
         assert "[файл](https://host/api/files/abc)" in result
 
     def test_numbering_starts_at_one(self) -> None:
-        files = [("url1", "a.txt"), ("url2", "b.txt"), ("url3", "c.txt")]
+        files: list[tuple[str, str | None]] = [("url1", "a.txt"), ("url2", "b.txt"), ("url3", "c.txt")]
         lines = format_attachments_block(files).strip().split("\n")
         assert lines[1] == "1. [a.txt](url1)"
         assert lines[2] == "2. [b.txt](url2)"
