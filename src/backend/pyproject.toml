@@ -1,6 +1,6 @@
 [project]
 name = "tg-express"
-version = "0.0.4"
+version = "0.0.5"
 description = "Message forwarding between telegram and express"
 authors = [{ name = "a1eskeev", email = "i@a1ekseev.dev" }]
 requires-python = ">=3.14"
@@ -11,7 +11,7 @@ dependencies = [
     "fastapi==0.135.1",
     "httpx==0.28.1",
     "aiogram==3.26.0",
-    "aiohttp-socks==0.10.1",
+    "aiohttp-socks==0.11.0",
     "pybotx==0.76.0",
     "SQLAlchemy==2.0.48",
     "psycopg[binary,pool]==3.3.3",
