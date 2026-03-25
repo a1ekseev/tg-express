@@ -80,7 +80,16 @@ class ToTelegramService:
         for msg in eligible:
             sanitized_bodies[msg.sync_id] = sanitize_to_telegram(msg.body)
 
-        # 0.2. Lookup channel_pair by express_chat_id
+        # 0.2. Filter out empty messages (no text, no file — e.g. polls)
+        non_empty = [m for m in eligible if sanitized_bodies.get(m.sync_id) or m.file_data is not None]
+        skipped_empty = len(eligible) - len(non_empty)
+        if skipped_empty:
+            logger.warning("Skipped %d empty Express messages (no text, no file)", skipped_empty)
+        if not non_empty:
+            return
+        eligible = non_empty
+
+        # 0.3. Lookup channel_pair by express_chat_id
         async with self._session_factory() as session, session.begin():
             channel_pair = await self._channel_pair_repo.find_by_express_chat_id(session, eligible[0].chat_id)
 
@@ -207,6 +216,8 @@ class ToTelegramService:
         # When sending file, first part is caption (max 1024 chars)
         first_limit = CAPTION_LENGTH if file_data is not None else None
         parts = split_to_telegram(header, body, first_part_limit=first_limit)
+        if not parts and file_data is not None:
+            parts = [""]  # empty text — file will be sent with caption=None
         file_type = msg.file_type or "document"
         file_name = msg.file_name
 

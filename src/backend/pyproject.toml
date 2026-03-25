@@ -1,6 +1,6 @@
 [project]
 name = "tg-express"
-version = "0.0.6"
+version = "0.0.7"
 description = "Message forwarding between telegram and express"
 authors = [{ name = "a1eskeev", email = "i@a1ekseev.dev" }]
 requires-python = ">=3.14"
