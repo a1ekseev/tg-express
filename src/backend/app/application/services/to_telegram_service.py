@@ -199,9 +199,13 @@ class ToTelegramService:
             # Resolve reply
             reply_to_message_id: int | None = None
             if msg.source_sync_id is not None:
+                logger.info("Reply detected source_sync_id=%s", msg.source_sync_id)
                 result = await self._mapping_queries.find_tg_message(session, msg.source_sync_id)
                 if result is not None:
                     reply_to_message_id = result[0]
+                    logger.info("Resolved reply to tg_message_id=%d", reply_to_message_id)
+                else:
+                    logger.warning("Reply target not found for source_sync_id=%s", msg.source_sync_id)
 
             # Employee for header (auto-create if first message, update express_name)
             employee = await self._employee_repo.find_or_create_by_express_huid(

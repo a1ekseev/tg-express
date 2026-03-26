@@ -11,12 +11,14 @@ if TYPE_CHECKING:
 
     from pybotx import Bot, EventDeleted, EventEdit, IncomingMessage
 
+    from app.application.services.system_commands import SystemCommandHandler
     from app.application.services.to_telegram_service import ToTelegramService
 
 logger = logging.getLogger(__name__)
 
 _webhook_service: ToTelegramService | None = None
 _system_channel_id: UUID | None = None
+_system_command_handler: SystemCommandHandler | None = None
 
 
 def set_webhook_service(service: ToTelegramService) -> None:
@@ -29,11 +31,18 @@ def set_system_channel_id(channel_id: UUID) -> None:
     _system_channel_id = channel_id
 
 
+def set_system_command_handler(handler: SystemCommandHandler) -> None:
+    global _system_command_handler  # noqa: PLW0603
+    _system_command_handler = handler
+
+
 @collector.default_message_handler()
 async def handle_default_message(message: IncomingMessage, bot: Bot) -> None:  # noqa: ARG001
     if _webhook_service is None:
         return
     if _system_channel_id is not None and message.chat.id == _system_channel_id:
+        if _system_command_handler is not None:
+            await _system_command_handler.handle(message.body)
         return
     dto = incoming_to_dto(message)
     logger.info("Express message received sync_id=%s chat_id=%s", message.sync_id, message.chat.id)

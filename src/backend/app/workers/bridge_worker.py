@@ -11,6 +11,7 @@ import boto3
 from aiogram import Router
 from fastapi import FastAPI
 
+from app.application.services.system_commands import SystemCommandHandler
 from app.application.services.to_express_service import ToExpressService
 from app.application.services.to_telegram_service import ToTelegramService
 from app.infrastructure.db.channel_pair_repo import ChannelPairRepo
@@ -20,7 +21,7 @@ from app.infrastructure.db.session import create_session_factory
 from app.infrastructure.db.to_express_repo import ToExpressRepo
 from app.infrastructure.db.to_telegram_repo import ToTelegramRepo
 from app.infrastructure.express.bot import create_express_bot
-from app.infrastructure.express.handlers import set_system_channel_id, set_webhook_service
+from app.infrastructure.express.handlers import set_system_channel_id, set_system_command_handler, set_webhook_service
 from app.infrastructure.http.express_webhook_router import router as webhook_router
 from app.infrastructure.logging_config import setup_logging
 from app.infrastructure.s3.storage import S3Storage
@@ -87,9 +88,24 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         retry_max_delay=settings.retry_max_delay,
     )
 
+    # --- System channel commands ---
+    system_command_handler = SystemCommandHandler(
+        session_factory=session_factory,
+        channel_pair_repo=ChannelPairRepo(),
+        employee_repo=EmployeeRepo(),
+        s3_storage=s3_storage,
+        express_bot=express_bot,
+        bot_id=settings.express_bot_id,
+        system_channel_id=settings.express_system_channel_id,
+        group_prefix=settings.express_group_prefix,
+        admin_huids=settings.express_admin_huids,
+        wait_callback=settings.express_wait_callback,
+    )
+
     # --- Express webhook: pybotx handlers (module-level, no FastAPI DI) ---
     set_webhook_service(to_telegram_service)
     set_system_channel_id(settings.express_system_channel_id)
+    set_system_command_handler(system_command_handler)
 
     # --- FastAPI app.state (used by Depends in routers) ---
     _app.state.express_bot = express_bot
