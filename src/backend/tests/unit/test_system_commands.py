@@ -31,12 +31,8 @@ def _make_handler(
     mock_session_factory = MagicMock(return_value=mock_session)
 
     mock_channel_pair_repo = MagicMock()
-    mock_channel_pair_repo.find_by_tg_chat_id = AsyncMock(
-        return_value=channel_pairs[0] if channel_pairs else None
-    )
-    mock_channel_pair_repo.get_for_update = AsyncMock(
-        return_value=channel_pairs[0] if channel_pairs else None
-    )
+    mock_channel_pair_repo.find_by_tg_chat_id = AsyncMock(return_value=channel_pairs[0] if channel_pairs else None)
+    mock_channel_pair_repo.get_for_update = AsyncMock(return_value=channel_pairs[0] if channel_pairs else None)
     mock_channel_pair_repo.approve = AsyncMock()
     mock_channel_pair_repo.list_all = AsyncMock(return_value=channel_pairs or [])
 

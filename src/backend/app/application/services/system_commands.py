@@ -298,15 +298,17 @@ class SystemCommandHandler:
         writer = csv.writer(buf)
         writer.writerow(["id", "tg_user_id", "tg_name", "express_huid", "express_name", "full_name", "position"])
         for e in employees:
-            writer.writerow([
-                str(e.id),
-                e.tg_user_id or "",
-                e.tg_name or "",
-                str(e.express_huid) if e.express_huid else "",
-                e.express_name or "",
-                e.full_name or "",
-                e.position or "",
-            ])
+            writer.writerow(
+                [
+                    str(e.id),
+                    e.tg_user_id or "",
+                    e.tg_name or "",
+                    str(e.express_huid) if e.express_huid else "",
+                    e.express_name or "",
+                    e.full_name or "",
+                    e.position or "",
+                ]
+            )
 
         csv_bytes = buf.getvalue().encode("utf-8")
         await self._reply_file(f"Список пользователей ({len(employees)})", content=csv_bytes, filename="employees.csv")
