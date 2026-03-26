@@ -41,6 +41,7 @@ async def handle_default_message(message: IncomingMessage, bot: Bot) -> None:  #
     if _webhook_service is None:
         return
     if _system_channel_id is not None and message.chat.id == _system_channel_id:
+        logger.info("System channel message: %s", message.body[:100])
         if _system_command_handler is not None:
             await _system_command_handler.handle(message.body)
         return

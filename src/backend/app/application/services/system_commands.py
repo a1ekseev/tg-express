@@ -60,26 +60,34 @@ class SystemCommandHandler:
 
         cmd, _, rest = text.partition(" ")
         rest = rest.strip()
+        logger.info("System command: cmd=%s args=%s", cmd, rest[:100])
 
-        match cmd:
-            case "/approve":
-                await self._cmd_approve(rest)
-            case "/express_position":
-                await self._cmd_express_position(rest)
-            case "/express_fullname":
-                await self._cmd_express_fullname(rest)
-            case "/telegram_position":
-                await self._cmd_telegram_position(rest)
-            case "/telegram_fullname":
-                await self._cmd_telegram_fullname(rest)
-            case "/group_pair_list":
-                await self._cmd_group_pair_list()
-            case "/users_list":
-                await self._cmd_users_list()
-            case "/file_download":
-                await self._cmd_file_download(rest)
-            case _:
-                await self._reply(f"Неизвестная команда: {cmd}")
+        try:
+            match cmd:
+                case "/approve":
+                    await self._cmd_approve(rest)
+                case "/express_position":
+                    await self._cmd_express_position(rest)
+                case "/express_fullname":
+                    await self._cmd_express_fullname(rest)
+                case "/telegram_position":
+                    await self._cmd_telegram_position(rest)
+                case "/telegram_fullname":
+                    await self._cmd_telegram_fullname(rest)
+                case "/group_pair_list":
+                    await self._cmd_group_pair_list()
+                case "/users_list":
+                    await self._cmd_users_list()
+                case "/file_download":
+                    await self._cmd_file_download(rest)
+                case _:
+                    await self._reply(f"Неизвестная команда: {cmd}")
+        except Exception:
+            logger.exception("Error handling system command: %s", cmd)
+            try:
+                await self._reply(f"Ошибка при выполнении команды: {cmd}")
+            except Exception:
+                logger.exception("Failed to send error reply")
 
     async def _reply(self, text: str) -> None:
         await self._bot.send_message(
