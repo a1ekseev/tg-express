@@ -111,6 +111,15 @@ class ToExpressService:
         for msg in forward_msgs:
             sanitized_bodies[msg.tg_message_id] = sanitize_to_express(msg.body, msg.entities)
 
+        # 0.5. Filter out empty messages (no text after sanitize, no file)
+        non_empty = [m for m in forward_msgs if sanitized_bodies.get(m.tg_message_id) or m.file_data is not None]
+        skipped_empty = len(forward_msgs) - len(non_empty)
+        if skipped_empty:
+            logger.warning("Skipped %d empty TG messages (no text after sanitize, no file)", skipped_empty)
+        if not non_empty:
+            return
+        forward_msgs = non_empty
+
         # 1. Upload files to S3 (outside transaction)
         s3_keys: dict[int, str] = {}
         for msg in forward_msgs:

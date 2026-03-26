@@ -1,4 +1,4 @@
-"""Tests for ToExpressService._send_record_to_express with mocked dependencies."""
+"""Tests for ToExpressService with mocked dependencies."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import pytest
 
 from app.application.dto import TgIncomingDTO
 from app.application.services.to_express_service import ToExpressService
-from app.domain.models import Employee, MessageStatus
+from app.domain.models import ChannelPair, Employee, MessageStatus
 
 
 def _make_dto(
@@ -256,3 +256,25 @@ class TestSendRecordToExpress:
         edit_body = mock_edit.call_args.kwargs["body"]
         assert "[Dev, Test User]:" in edit_body
         assert "edited text" in edit_body
+
+
+class TestHandleBatchEmojiFilter:
+    @pytest.mark.asyncio
+    @patch(_SEND_PATH, new_callable=AsyncMock)
+    async def test_emoji_only_message_not_sent(self, mock_send: AsyncMock) -> None:
+        """Emoji-only message (body becomes empty after sanitize) should not be forwarded."""
+        service = _make_service()
+        # Mock channel_pair_repo to return approved pair
+        approved_pair = ChannelPair(
+            id=uuid4(),
+            tg_chat_id=-1001,
+            express_chat_id=uuid4(),
+            is_approved=True,
+            name="Test",
+        )
+        service._channel_pair_repo.get_or_create_unapproved = AsyncMock(return_value=approved_pair)  # type: ignore[assignment]  # noqa: SLF001
+        dto = _make_dto(body="\U0001f525\U0001f525\U0001f525")
+
+        await service.handle_batch([dto])
+
+        mock_send.assert_not_called()

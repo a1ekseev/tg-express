@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import urllib.parse
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
@@ -30,7 +31,7 @@ class S3Storage:
         logger.info("S3 upload key=%s content_type=%s filename=%s", key, content_type, filename)
         metadata: dict[str, str] = {}
         if filename:
-            metadata["filename"] = filename
+            metadata["filename"] = urllib.parse.quote(filename)
         await asyncio.to_thread(
             self._client.put_object,
             Bucket=self._bucket,
@@ -54,7 +55,10 @@ class S3Storage:
     async def head_object(self, key: str) -> dict[str, str]:
         """Check if object exists and return its user metadata. Raises ClientError if not found."""
         response: dict[str, Any] = await asyncio.to_thread(self._client.head_object, Bucket=self._bucket, Key=key)
-        return response.get("Metadata", {})
+        metadata = response.get("Metadata", {})
+        if "filename" in metadata:
+            metadata["filename"] = urllib.parse.unquote(metadata["filename"])
+        return metadata
 
     async def get_object_stream(self, key: str) -> AsyncIterator[bytes]:
         response: dict[str, Any] = await asyncio.to_thread(
